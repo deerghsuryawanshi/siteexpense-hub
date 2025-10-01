@@ -59,16 +59,16 @@ const Reports = () => {
       if (filters.end_date) {
         query = query.lte("date", filters.end_date);
       }
-      if (filters.site_id) {
+      if (filters.site_id && filters.site_id !== "all") {
         query = query.eq("site_id", filters.site_id);
       }
-      if (filters.vendor_id) {
+      if (filters.vendor_id && filters.vendor_id !== "all") {
         query = query.eq("vendor_id", filters.vendor_id);
       }
-      if (filters.category_id) {
+      if (filters.category_id && filters.category_id !== "all") {
         query = query.eq("category_id", filters.category_id);
       }
-      if (filters.payment_status) {
+      if (filters.payment_status && filters.payment_status !== "all") {
         query = query.eq("payment_status", filters.payment_status);
       }
 
@@ -158,7 +158,7 @@ const Reports = () => {
                     <SelectValue placeholder="All statuses" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     <SelectItem value="paid">Paid</SelectItem>
                     <SelectItem value="unpaid">Unpaid</SelectItem>
                     <SelectItem value="partial">Partial</SelectItem>
@@ -172,7 +172,7 @@ const Reports = () => {
                     <SelectValue placeholder="All sites" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     {sites.map((site) => (
                       <SelectItem key={site.id} value={site.id}>
                         {site.site_name}
@@ -188,7 +188,7 @@ const Reports = () => {
                     <SelectValue placeholder="All vendors" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     {vendors.map((vendor) => (
                       <SelectItem key={vendor.id} value={vendor.id}>
                         {vendor.name}
@@ -204,7 +204,7 @@ const Reports = () => {
                     <SelectValue placeholder="All categories" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     {categories.map((category) => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.category_name}
