@@ -13,6 +13,7 @@ import { Trash2, Plus } from "lucide-react";
 interface Profile {
   id: string;
   name: string;
+  email: string | null;
   role: string;
   created_at: string;
 }
@@ -212,6 +213,7 @@ const UserManagement = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Created At</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -221,6 +223,7 @@ const UserManagement = () => {
                 {profiles.map((profile) => (
                   <TableRow key={profile.id}>
                     <TableCell>{profile.name}</TableCell>
+                    <TableCell>{profile.email || "-"}</TableCell>
                     <TableCell className="capitalize">
                       {profile.role.replace("_", " ")}
                     </TableCell>
