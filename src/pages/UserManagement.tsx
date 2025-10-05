@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,7 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>("viewer");
+  const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -84,9 +85,10 @@ const UserManagement = () => {
         description: "User created successfully",
       });
 
-      setDialogOpen(false);
+      // Reset form and state
+      formRef.current?.reset();
       setSelectedRole("viewer");
-      e.currentTarget.reset();
+      setDialogOpen(false);
       fetchProfiles();
     } catch (error: any) {
       toast({
@@ -149,7 +151,7 @@ const UserManagement = () => {
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[525px]">
-            <form onSubmit={handleSubmit}>
+            <form ref={formRef} onSubmit={handleSubmit}>
               <DialogHeader>
                 <DialogTitle>Create New User</DialogTitle>
                 <DialogDescription>
