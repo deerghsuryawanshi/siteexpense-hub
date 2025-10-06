@@ -132,41 +132,41 @@ const Dashboard = () => {
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Expenses</CardTitle>
-            <IndianRupee className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-xs sm:text-sm font-medium">Today's Expenses</CardTitle>
+            <IndianRupee className="h-4 w-4 text-muted-foreground shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{stats.todayTotal.toLocaleString()}</div>
+            <div className="text-xl sm:text-2xl font-bold">₹{stats.todayTotal.toLocaleString()}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">This Month</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-xs sm:text-sm font-medium">This Month</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{stats.monthTotal.toLocaleString()}</div>
+            <div className="text-xl sm:text-2xl font-bold">₹{stats.monthTotal.toLocaleString()}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Sites</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-xs sm:text-sm font-medium">Active Sites</CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.sitesCount}</div>
+            <div className="text-xl sm:text-2xl font-bold">{stats.sitesCount}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unpaid Bills</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-warning" />
+            <CardTitle className="text-xs sm:text-sm font-medium">Unpaid Bills</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-warning">₹{stats.unpaidTotal.toLocaleString()}</div>
+            <div className="text-xl sm:text-2xl font-bold text-warning">₹{stats.unpaidTotal.toLocaleString()}</div>
           </CardContent>
         </Card>
       </div>
@@ -175,21 +175,21 @@ const Dashboard = () => {
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Monthly Trend</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Monthly Trend</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2 sm:px-6">
             {monthlyData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={monthlyData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip formatter={(value) => `₹${Number(value).toLocaleString()}`} />
                   <Line type="monotone" dataKey="amount" stroke="hsl(var(--chart-1))" strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+              <div className="flex items-center justify-center h-[250px] text-sm text-muted-foreground">
                 No data available
               </div>
             )}
@@ -198,11 +198,11 @@ const Dashboard = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Category-wise Distribution</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Category Distribution</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2 sm:px-6">
             {categoryData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie
                     data={categoryData}
@@ -210,7 +210,7 @@ const Dashboard = () => {
                     cy="50%"
                     labelLine={false}
                     label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                    outerRadius={80}
+                    outerRadius={70}
                     fill="#8884d8"
                     dataKey="value"
                   >
@@ -222,7 +222,7 @@ const Dashboard = () => {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+              <div className="flex items-center justify-center h-[250px] text-sm text-muted-foreground">
                 No data available
               </div>
             )}

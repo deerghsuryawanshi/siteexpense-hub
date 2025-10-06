@@ -480,52 +480,55 @@ const Expenses = () => {
         <CardHeader>
           <CardTitle>Recent Expenses</CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Site</TableHead>
-                <TableHead>Vendor</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
+        <CardContent className="overflow-x-auto -mx-6 sm:mx-0">
+          <div className="min-w-[800px]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs sm:text-sm">Date</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Site</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Vendor</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Category</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Description</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Amount</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
             <TableBody>
               {expenses.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-xs sm:text-sm text-muted-foreground py-8">
                     No expenses found. Add your first expense to get started.
                   </TableCell>
                 </TableRow>
               ) : (
                 expenses.map((expense) => (
                   <TableRow key={expense.id}>
-                    <TableCell>{new Date(expense.date).toLocaleDateString()}</TableCell>
-                    <TableCell>{expense.sites.site_name}</TableCell>
-                    <TableCell>{expense.vendors.name}</TableCell>
-                    <TableCell>{expense.categories.category_name}</TableCell>
-                    <TableCell className="max-w-xs truncate">{expense.description || "-"}</TableCell>
-                    <TableCell>₹{expense.amount.toLocaleString()}</TableCell>
+                    <TableCell className="text-xs sm:text-sm whitespace-nowrap">{new Date(expense.date).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-xs sm:text-sm">{expense.sites.site_name}</TableCell>
+                    <TableCell className="text-xs sm:text-sm">{expense.vendors.name}</TableCell>
+                    <TableCell className="text-xs sm:text-sm">{expense.categories.category_name}</TableCell>
+                    <TableCell className="max-w-xs truncate text-xs sm:text-sm">{expense.description || "-"}</TableCell>
+                    <TableCell className="text-xs sm:text-sm whitespace-nowrap">₹{expense.amount.toLocaleString()}</TableCell>
                     <TableCell>{getStatusBadge(expense.payment_status)}</TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8"
                           onClick={() => handleEdit(expense)}
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Pencil className="w-3 h-3 sm:w-4 sm:h-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8"
                           onClick={() => handleDelete(expense.id)}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -534,6 +537,7 @@ const Expenses = () => {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

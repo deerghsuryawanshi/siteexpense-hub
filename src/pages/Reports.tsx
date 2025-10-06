@@ -245,28 +245,29 @@ const Reports = () => {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Site</TableHead>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
+          <CardContent className="overflow-x-auto -mx-6 sm:mx-0">
+            <div className="min-w-[700px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs sm:text-sm">Date</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Site</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Vendor</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Category</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Description</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Amount</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
               <TableBody>
                 {reportData.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell>{new Date(row.date).toLocaleDateString()}</TableCell>
-                    <TableCell>{row.sites.site_name}</TableCell>
-                    <TableCell>{row.vendors.name}</TableCell>
-                    <TableCell>{row.categories.category_name}</TableCell>
-                    <TableCell className="max-w-xs truncate">{row.description || "-"}</TableCell>
-                    <TableCell>₹{row.amount.toLocaleString()}</TableCell>
+                    <TableCell className="text-xs sm:text-sm whitespace-nowrap">{new Date(row.date).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-xs sm:text-sm">{row.sites.site_name}</TableCell>
+                    <TableCell className="text-xs sm:text-sm">{row.vendors.name}</TableCell>
+                    <TableCell className="text-xs sm:text-sm">{row.categories.category_name}</TableCell>
+                    <TableCell className="max-w-xs truncate text-xs sm:text-sm">{row.description || "-"}</TableCell>
+                    <TableCell className="text-xs sm:text-sm whitespace-nowrap">₹{row.amount.toLocaleString()}</TableCell>
                     <TableCell>
                       <Badge
                         variant={
@@ -276,7 +277,7 @@ const Reports = () => {
                             ? "destructive"
                             : "secondary"
                         }
-                        className="capitalize"
+                        className="capitalize text-xs"
                       >
                         {row.payment_status}
                       </Badge>
@@ -285,6 +286,7 @@ const Reports = () => {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       )}

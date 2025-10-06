@@ -281,52 +281,55 @@ const Credits = () => {
           <CardTitle>Recent Credits</CardTitle>
           <CardDescription>List of all credit entries</CardDescription>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="overflow-x-auto -mx-6 sm:mx-0">
           {credits.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
+            <p className="text-center text-xs sm:text-sm text-muted-foreground py-8 px-6">
               No credits found. Add your first credit entry.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Payment Method</TableHead>
-                  <TableHead>Bank Account</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
+            <div className="min-w-[700px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs sm:text-sm">Date</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Category</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Description</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Payment Method</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Bank Account</TableHead>
+                    <TableHead className="text-right text-xs sm:text-sm">Amount</TableHead>
+                    <TableHead className="text-right text-xs sm:text-sm">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
               <TableBody>
                 {credits.map((credit) => (
                   <TableRow key={credit.id}>
-                    <TableCell>{new Date(credit.date).toLocaleDateString()}</TableCell>
-                    <TableCell>{credit.category}</TableCell>
-                    <TableCell>{credit.description || "-"}</TableCell>
-                    <TableCell className="capitalize">
+                    <TableCell className="text-xs sm:text-sm whitespace-nowrap">{new Date(credit.date).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-xs sm:text-sm">{credit.category}</TableCell>
+                    <TableCell className="text-xs sm:text-sm">{credit.description || "-"}</TableCell>
+                    <TableCell className="capitalize text-xs sm:text-sm">
                       {credit.payment_method.replace("_", " ")}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-xs sm:text-sm">
                       {credit.bank_accounts?.account_name || "-"}
                     </TableCell>
-                    <TableCell className="text-right font-medium text-green-600">
+                    <TableCell className="text-right font-medium text-green-600 text-xs sm:text-sm whitespace-nowrap">
                       ₹{credit.amount.toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => handleDelete(credit.id)}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

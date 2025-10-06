@@ -218,46 +218,49 @@ const UserManagement = () => {
           <CardTitle>Users</CardTitle>
           <CardDescription>All registered users</CardDescription>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="overflow-x-auto -mx-6 sm:mx-0">
           {profiles.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
+            <p className="text-center text-xs sm:text-sm text-muted-foreground py-8 px-6">
               No users found.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Created At</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
+            <div className="min-w-[600px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs sm:text-sm">Name</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Email</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Role</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Created At</TableHead>
+                    <TableHead className="text-right text-xs sm:text-sm">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
               <TableBody>
                 {profiles.map((profile) => (
                   <TableRow key={profile.id}>
-                    <TableCell>{profile.name}</TableCell>
-                    <TableCell>{profile.email || "-"}</TableCell>
-                    <TableCell className="capitalize">
+                    <TableCell className="text-xs sm:text-sm">{profile.name}</TableCell>
+                    <TableCell className="text-xs sm:text-sm">{profile.email || "-"}</TableCell>
+                    <TableCell className="capitalize text-xs sm:text-sm">
                       {profile.role.replace("_", " ")}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-xs sm:text-sm whitespace-nowrap">
                       {new Date(profile.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => handleDelete(profile.id)}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

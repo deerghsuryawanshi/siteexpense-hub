@@ -180,47 +180,49 @@ const BankAccounts = () => {
         <CardHeader>
           <CardTitle>All Bank Accounts</CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Account Name</TableHead>
-                <TableHead>Bank Name</TableHead>
-                <TableHead>Account Number</TableHead>
-                <TableHead>IFSC Code</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
+        <CardContent className="overflow-x-auto -mx-6 sm:mx-0">
+          <div className="min-w-[600px]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs sm:text-sm">Account Name</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Bank Name</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Account Number</TableHead>
+                  <TableHead className="text-xs sm:text-sm">IFSC Code</TableHead>
+                  <TableHead className="text-right text-xs sm:text-sm">Balance</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
             <TableBody>
               {bankAccounts.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableRow>
+                  <TableCell colSpan={6} className="text-center text-xs sm:text-sm text-muted-foreground py-8">
                     No bank accounts found. Add your first bank account to get started.
                   </TableCell>
                 </TableRow>
               ) : (
                 bankAccounts.map((account) => (
                   <TableRow key={account.id}>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium text-xs sm:text-sm">
                       <div className="flex items-center gap-2">
-                        <Landmark className="w-4 h-4 text-primary" />
-                        {account.account_name}
+                        <Landmark className="w-3 h-3 sm:w-4 sm:h-4 text-primary shrink-0" />
+                        <span className="truncate">{account.account_name}</span>
                       </div>
                     </TableCell>
-                    <TableCell>{account.bank_name}</TableCell>
-                    <TableCell className="font-mono">{account.account_number}</TableCell>
-                    <TableCell>{account.ifsc_code || "-"}</TableCell>
-                    <TableCell className="text-right font-semibold">
+                    <TableCell className="text-xs sm:text-sm">{account.bank_name}</TableCell>
+                    <TableCell className="font-mono text-xs sm:text-sm">{account.account_number}</TableCell>
+                    <TableCell className="text-xs sm:text-sm">{account.ifsc_code || "-"}</TableCell>
+                    <TableCell className="text-right font-semibold text-xs sm:text-sm whitespace-nowrap">
                       ₹{account.balance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => handleDelete(account.id)}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -228,6 +230,7 @@ const BankAccounts = () => {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

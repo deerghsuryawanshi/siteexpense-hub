@@ -154,36 +154,38 @@ const Vendors = () => {
         <CardHeader>
           <CardTitle>All Vendors</CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>GST Number</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
+        <CardContent className="overflow-x-auto -mx-6 sm:mx-0">
+          <div className="min-w-[500px]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs sm:text-sm">Name</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Contact</TableHead>
+                  <TableHead className="text-xs sm:text-sm">GST Number</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
             <TableBody>
               {vendors.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center text-xs sm:text-sm text-muted-foreground py-8">
                     No vendors found. Add your first vendor to get started.
                   </TableCell>
                 </TableRow>
               ) : (
                 vendors.map((vendor) => (
                   <TableRow key={vendor.id}>
-                    <TableCell className="font-medium">{vendor.name}</TableCell>
-                    <TableCell>{vendor.contact || "-"}</TableCell>
-                    <TableCell>{vendor.gst_number || "-"}</TableCell>
+                    <TableCell className="font-medium text-xs sm:text-sm">{vendor.name}</TableCell>
+                    <TableCell className="text-xs sm:text-sm">{vendor.contact || "-"}</TableCell>
+                    <TableCell className="text-xs sm:text-sm">{vendor.gst_number || "-"}</TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => handleDelete(vendor.id)}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -191,6 +193,7 @@ const Vendors = () => {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
