@@ -136,6 +136,11 @@ const Reports = () => {
           row.payment_status || "-",
         ].join(",")
       ),
+      "",
+      "",
+      `"Total Expenses",,,,,,${-totalExpenses},`,
+      `"Total Credits",,,,,,${totalCredits},`,
+      `"Net Amount",,,,,,${netAmount},`,
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });
