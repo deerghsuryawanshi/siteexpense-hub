@@ -49,33 +49,57 @@ const Reports = () => {
     };
 
     try {
-      let query = supabase
+      // Fetch expenses
+      let expensesQuery = supabase
         .from("expenses")
         .select("*, sites(site_name), vendors(name), categories(category_name)");
 
       if (filters.start_date) {
-        query = query.gte("date", filters.start_date);
+        expensesQuery = expensesQuery.gte("date", filters.start_date);
       }
       if (filters.end_date) {
-        query = query.lte("date", filters.end_date);
+        expensesQuery = expensesQuery.lte("date", filters.end_date);
       }
       if (filters.site_id && filters.site_id !== "all") {
-        query = query.eq("site_id", filters.site_id);
+        expensesQuery = expensesQuery.eq("site_id", filters.site_id);
       }
       if (filters.vendor_id && filters.vendor_id !== "all") {
-        query = query.eq("vendor_id", filters.vendor_id);
+        expensesQuery = expensesQuery.eq("vendor_id", filters.vendor_id);
       }
       if (filters.category_id && filters.category_id !== "all") {
-        query = query.eq("category_id", filters.category_id);
+        expensesQuery = expensesQuery.eq("category_id", filters.category_id);
       }
       if (filters.payment_status && filters.payment_status !== "all") {
-        query = query.eq("payment_status", filters.payment_status);
+        expensesQuery = expensesQuery.eq("payment_status", filters.payment_status);
       }
 
-      const { data, error } = await query.order("date", { ascending: false });
+      // Fetch credits
+      let creditsQuery = supabase
+        .from("credits")
+        .select("*");
 
-      if (error) throw error;
-      setReportData(data || []);
+      if (filters.start_date) {
+        creditsQuery = creditsQuery.gte("date", filters.start_date);
+      }
+      if (filters.end_date) {
+        creditsQuery = creditsQuery.lte("date", filters.end_date);
+      }
+
+      const [expensesResult, creditsResult] = await Promise.all([
+        expensesQuery.order("date", { ascending: false }),
+        creditsQuery.order("date", { ascending: false }),
+      ]);
+
+      if (expensesResult.error) throw expensesResult.error;
+      if (creditsResult.error) throw creditsResult.error;
+
+      // Combine expenses and credits with type indicator
+      const combinedData = [
+        ...(expensesResult.data || []).map((item: any) => ({ ...item, type: "expense" })),
+        ...(creditsResult.data || []).map((item: any) => ({ ...item, type: "credit" })),
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      setReportData(combinedData);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -97,18 +121,19 @@ const Reports = () => {
       return;
     }
 
-    const headers = ["Date", "Site", "Vendor", "Category", "Description", "Amount", "Status"];
+    const headers = ["Date", "Type", "Site/Category", "Vendor", "Category", "Description", "Amount", "Status"];
     const csvContent = [
       headers.join(","),
       ...reportData.map((row) =>
         [
           row.date,
-          row.sites.site_name,
-          row.vendors.name,
-          row.categories.category_name,
+          row.type,
+          row.type === "expense" ? row.sites?.site_name || "-" : row.category || "-",
+          row.type === "expense" ? row.vendors?.name || "-" : "-",
+          row.type === "expense" ? row.categories?.category_name || "-" : "-",
           `"${row.description || ""}"`,
-          row.amount,
-          row.payment_status,
+          row.type === "credit" ? row.amount : -row.amount,
+          row.payment_status || "-",
         ].join(",")
       ),
     ].join("\n");
@@ -117,7 +142,7 @@ const Reports = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `expense-report-${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `financial-report-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
 
@@ -127,7 +152,15 @@ const Reports = () => {
     });
   };
 
-  const totalAmount = reportData.reduce((sum, row) => sum + Number(row.amount), 0);
+  const totalExpenses = reportData
+    .filter((row) => row.type === "expense")
+    .reduce((sum, row) => sum + Number(row.amount), 0);
+  
+  const totalCredits = reportData
+    .filter((row) => row.type === "credit")
+    .reduce((sum, row) => sum + Number(row.amount), 0);
+  
+  const netAmount = totalCredits - totalExpenses;
 
   return (
     <div className="space-y-6">
@@ -237,21 +270,34 @@ const Reports = () => {
       {reportData.length > 0 && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <CardTitle>Report Results</CardTitle>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Total Amount</p>
-                <p className="text-2xl font-bold">₹{totalAmount.toLocaleString()}</p>
+              <div className="grid grid-cols-3 gap-4 text-right w-full sm:w-auto">
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Expenses</p>
+                  <p className="text-lg font-bold text-destructive">₹{totalExpenses.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Credits</p>
+                  <p className="text-lg font-bold text-green-600">₹{totalCredits.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Net Amount</p>
+                  <p className={`text-lg font-bold ${netAmount >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                    ₹{netAmount.toLocaleString()}
+                  </p>
+                </div>
               </div>
             </div>
           </CardHeader>
           <CardContent className="overflow-x-auto -mx-6 sm:mx-0">
-            <div className="min-w-[700px]">
+            <div className="min-w-[800px]">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs sm:text-sm">Date</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Site</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Type</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Site/Category</TableHead>
                     <TableHead className="text-xs sm:text-sm">Vendor</TableHead>
                     <TableHead className="text-xs sm:text-sm">Category</TableHead>
                     <TableHead className="text-xs sm:text-sm">Description</TableHead>
@@ -263,24 +309,35 @@ const Reports = () => {
                 {reportData.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell className="text-xs sm:text-sm whitespace-nowrap">{new Date(row.date).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-xs sm:text-sm">{row.sites.site_name}</TableCell>
-                    <TableCell className="text-xs sm:text-sm">{row.vendors.name}</TableCell>
-                    <TableCell className="text-xs sm:text-sm">{row.categories.category_name}</TableCell>
-                    <TableCell className="max-w-xs truncate text-xs sm:text-sm">{row.description || "-"}</TableCell>
-                    <TableCell className="text-xs sm:text-sm whitespace-nowrap">₹{row.amount.toLocaleString()}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant={
-                          row.payment_status === "paid"
-                            ? "default"
-                            : row.payment_status === "unpaid"
-                            ? "destructive"
-                            : "secondary"
-                        }
-                        className="capitalize text-xs"
-                      >
-                        {row.payment_status}
+                      <Badge variant={row.type === "credit" ? "default" : "destructive"} className="capitalize text-xs">
+                        {row.type}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs sm:text-sm">
+                      {row.type === "expense" ? row.sites?.site_name || "-" : row.category || "-"}
+                    </TableCell>
+                    <TableCell className="text-xs sm:text-sm">{row.type === "expense" ? row.vendors?.name || "-" : "-"}</TableCell>
+                    <TableCell className="text-xs sm:text-sm">{row.type === "expense" ? row.categories?.category_name || "-" : "-"}</TableCell>
+                    <TableCell className="max-w-xs truncate text-xs sm:text-sm">{row.description || "-"}</TableCell>
+                    <TableCell className={`text-xs sm:text-sm whitespace-nowrap font-semibold ${row.type === "credit" ? "text-green-600" : "text-destructive"}`}>
+                      {row.type === "credit" ? "+" : "-"}₹{Number(row.amount).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      {row.payment_status && (
+                        <Badge
+                          variant={
+                            row.payment_status === "paid"
+                              ? "default"
+                              : row.payment_status === "unpaid"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                          className="capitalize text-xs"
+                        >
+                          {row.payment_status}
+                        </Badge>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
