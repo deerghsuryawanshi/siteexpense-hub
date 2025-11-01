@@ -71,31 +71,44 @@ const Reports = () => {
         expensesQuery = expensesQuery.eq("payment_status", filters.payment_status as "paid" | "partial" | "unpaid");
       }
 
-      // Fetch credits
-      let creditsQuery = supabase
-        .from("credits")
-        .select("*");
-
-      if (filters.start_date) {
-        creditsQuery = creditsQuery.gte("date", filters.start_date);
-      }
-      if (filters.end_date) {
-        creditsQuery = creditsQuery.lte("date", filters.end_date);
-      }
-
-      const [expensesResult, creditsResult] = await Promise.all([
-        expensesQuery.order("date", { ascending: false }),
-        creditsQuery.order("date", { ascending: false }),
-      ]);
-
+      const expensesResult = await expensesQuery.order("date", { ascending: false });
+      
       if (expensesResult.error) throw expensesResult.error;
-      if (creditsResult.error) throw creditsResult.error;
 
-      // Combine expenses and credits with type indicator
-      const combinedData = [
+      // Only fetch credits if no expense-specific filters are applied
+      const hasExpenseFilters = 
+        (filters.site_id && filters.site_id !== "all") ||
+        (filters.vendor_id && filters.vendor_id !== "all") ||
+        (filters.category_id && filters.category_id !== "all");
+
+      let combinedData = [
         ...(expensesResult.data || []).map((item: any) => ({ ...item, type: "expense" })),
-        ...(creditsResult.data || []).map((item: any) => ({ ...item, type: "credit" })),
-      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      ];
+
+      if (!hasExpenseFilters) {
+        // Fetch credits only when no site/vendor/category filter is applied
+        let creditsQuery = supabase
+          .from("credits")
+          .select("*");
+
+        if (filters.start_date) {
+          creditsQuery = creditsQuery.gte("date", filters.start_date);
+        }
+        if (filters.end_date) {
+          creditsQuery = creditsQuery.lte("date", filters.end_date);
+        }
+
+        const creditsResult = await creditsQuery.order("date", { ascending: false });
+        
+        if (creditsResult.error) throw creditsResult.error;
+
+        combinedData = [
+          ...combinedData,
+          ...(creditsResult.data || []).map((item: any) => ({ ...item, type: "credit" })),
+        ];
+      }
+
+      combinedData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       setReportData(combinedData);
     } catch (error: any) {
