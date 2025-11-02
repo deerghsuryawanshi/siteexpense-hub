@@ -3,7 +3,7 @@ import { useNavigate, NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-import { LayoutDashboard, Receipt, Building2, Users, FileText, LogOut, HardHat, Landmark, TrendingUp, UserCog } from "lucide-react";
+import { LayoutDashboard, Receipt, Building2, Users, FileText, LogOut, HardHat, Landmark, TrendingUp, UserCog, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,6 +18,7 @@ const navigationItems = [
   { title: "Sites", url: "/sites", icon: Building2 },
   { title: "Vendors", url: "/vendors", icon: Users },
   { title: "Bank Accounts", url: "/bank-accounts", icon: Landmark },
+  { title: "Fund Transfers", url: "/fund-transfers", icon: ArrowRightLeft },
   { title: "Users", url: "/users", icon: UserCog },
   { title: "Reports", url: "/reports", icon: FileText },
 ];

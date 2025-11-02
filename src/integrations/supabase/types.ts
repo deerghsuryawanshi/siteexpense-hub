@@ -209,6 +209,57 @@ export type Database = {
           },
         ]
       }
+      fund_transfers: {
+        Row: {
+          amount: number
+          created_at: string | null
+          created_by: string
+          date: string
+          description: string | null
+          from_account_id: string
+          id: string
+          to_account_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          created_by: string
+          date: string
+          description?: string | null
+          from_account_id: string
+          id?: string
+          to_account_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string
+          date?: string
+          description?: string | null
+          from_account_id?: string
+          id?: string
+          to_account_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fund_transfers_from_account_id_fkey"
+            columns: ["from_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fund_transfers_to_account_id_fkey"
+            columns: ["to_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

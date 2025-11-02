@@ -11,6 +11,7 @@ import Sites from "./pages/Sites";
 import UserManagement from "./pages/UserManagement";
 import Vendors from "./pages/Vendors";
 import BankAccounts from "./pages/BankAccounts";
+import FundTransfers from "./pages/FundTransfers";
 import Reports from "./pages/Reports";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import NotFound from "./pages/NotFound";
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/sites" element={<DashboardLayout><Sites /></DashboardLayout>} />
           <Route path="/vendors" element={<DashboardLayout><Vendors /></DashboardLayout>} />
           <Route path="/bank-accounts" element={<DashboardLayout><BankAccounts /></DashboardLayout>} />
+          <Route path="/fund-transfers" element={<DashboardLayout><FundTransfers /></DashboardLayout>} />
           <Route path="/users" element={<DashboardLayout><UserManagement /></DashboardLayout>} />
           <Route path="/reports" element={<DashboardLayout><Reports /></DashboardLayout>} />
           <Route path="*" element={<NotFound />} />
