@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Filter } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 interface Expense {
   id: string;
@@ -40,11 +41,28 @@ const Expenses = () => {
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [editPaymentMethod, setEditPaymentMethod] = useState<string>("cash");
+  
+  // Pagination and filters
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const itemsPerPage = 10;
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterSite, setFilterSite] = useState<string>("all");
+  const [filterVendor, setFilterVendor] = useState<string>("all");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
+  const [showFilters, setShowFilters] = useState(false);
+
+  useEffect(() => {
+    getCurrentUser();
+  }, []);
 
   useEffect(() => {
     fetchData();
-    getCurrentUser();
-  }, []);
+  }, [currentPage, filterSite, filterVendor, filterCategory, filterStatus, dateFrom, dateTo, searchQuery]);
 
   const getCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -53,11 +71,44 @@ const Expenses = () => {
 
   const fetchData = async () => {
     try {
+      // Build query with filters
+      let query = supabase
+        .from("expenses")
+        .select("*, sites(site_name), vendors(name), categories(category_name)", { count: "exact" });
+
+      // Apply filters
+      if (filterSite !== "all") {
+        query = query.eq("site_id", filterSite);
+      }
+      if (filterVendor !== "all") {
+        query = query.eq("vendor_id", filterVendor);
+      }
+      if (filterCategory !== "all") {
+        query = query.eq("category_id", filterCategory);
+      }
+      if (filterStatus !== "all") {
+        query = query.eq("payment_status", filterStatus as "paid" | "unpaid" | "partial");
+      }
+      if (dateFrom) {
+        query = query.gte("date", dateFrom);
+      }
+      if (dateTo) {
+        query = query.lte("date", dateTo);
+      }
+      if (searchQuery) {
+        query = query.or(`description.ilike.%${searchQuery}%`);
+      }
+
+      // Apply pagination
+      const from = (currentPage - 1) * itemsPerPage;
+      const to = from + itemsPerPage - 1;
+      
+      query = query
+        .order("date", { ascending: false })
+        .range(from, to);
+
       const [expensesRes, sitesRes, vendorsRes, categoriesRes, bankAccountsRes] = await Promise.all([
-        supabase
-          .from("expenses")
-          .select("*, sites(site_name), vendors(name), categories(category_name)")
-          .order("date", { ascending: false }),
+        query,
         supabase.from("sites").select("*"),
         supabase.from("vendors").select("*"),
         supabase.from("categories").select("*"),
@@ -65,6 +116,10 @@ const Expenses = () => {
       ]);
 
       if (expensesRes.data) setExpenses(expensesRes.data);
+      if (expensesRes.count !== null) {
+        setTotalCount(expensesRes.count);
+        setTotalPages(Math.ceil(expensesRes.count / itemsPerPage));
+      }
       if (sitesRes.data) setSites(sitesRes.data);
       if (vendorsRes.data) setVendors(vendorsRes.data);
       if (categoriesRes.data) setCategories(categoriesRes.data);
@@ -74,6 +129,22 @@ const Expenses = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFilterChange = () => {
+    setCurrentPage(1);
+    fetchData();
+  };
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setFilterSite("all");
+    setFilterVendor("all");
+    setFilterCategory("all");
+    setFilterStatus("all");
+    setDateFrom("");
+    setDateTo("");
+    setCurrentPage(1);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -478,7 +549,125 @@ const Expenses = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent Expenses</CardTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle>Recent Expenses ({totalCount})</CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="w-4 h-4 mr-2" />
+              {showFilters ? "Hide" : "Show"} Filters
+            </Button>
+          </div>
+          
+          {showFilters && (
+            <div className="mt-4 space-y-4">
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by description..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              {/* Filters Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Site</Label>
+                  <Select value={filterSite} onValueChange={setFilterSite}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All sites" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Sites</SelectItem>
+                      {sites.map((site) => (
+                        <SelectItem key={site.id} value={site.id}>
+                          {site.site_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Vendor</Label>
+                  <Select value={filterVendor} onValueChange={setFilterVendor}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All vendors" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Vendors</SelectItem>
+                      {vendors.map((vendor) => (
+                        <SelectItem key={vendor.id} value={vendor.id}>
+                          {vendor.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Select value={filterCategory} onValueChange={setFilterCategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.category_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Payment Status</Label>
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All statuses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="unpaid">Unpaid</SelectItem>
+                      <SelectItem value="partial">Partial</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>From Date</Label>
+                  <Input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>To Date</Label>
+                  <Input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  Clear Filters
+                </Button>
+              </div>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="overflow-x-auto -mx-6 sm:mx-0">
           <div className="min-w-[800px]">
@@ -538,6 +727,53 @@ const Expenses = () => {
             </TableBody>
           </Table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-4 flex justify-center">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    // Show first page, last page, current page, and pages around current
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(page)}
+                            isActive={currentPage === page}
+                            className="cursor-pointer"
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    } else if (page === currentPage - 2 || page === currentPage + 2) {
+                      return <PaginationItem key={page}>...</PaginationItem>;
+                    }
+                    return null;
+                  })}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
