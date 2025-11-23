@@ -17,6 +17,7 @@ const Reports = () => {
   const [sites, setSites] = useState<any[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
   const [filters, setFilters] = useState({
     start_date: "",
     end_date: "",
@@ -24,18 +25,21 @@ const Reports = () => {
     vendor_id: "all",
     category_id: "all",
     payment_status: "all",
+    bank_account_id: "all",
   });
 
   const fetchFilterOptions = async () => {
-    const [sitesRes, vendorsRes, categoriesRes] = await Promise.all([
+    const [sitesRes, vendorsRes, categoriesRes, bankAccountsRes] = await Promise.all([
       supabase.from("sites").select("*"),
       supabase.from("vendors").select("*"),
       supabase.from("categories").select("*"),
+      supabase.from("bank_accounts").select("*").order("account_name"),
     ]);
 
     if (sitesRes.data) setSites(sitesRes.data);
     if (vendorsRes.data) setVendors(vendorsRes.data);
     if (categoriesRes.data) setCategories(categoriesRes.data);
+    if (bankAccountsRes.data) setBankAccounts(bankAccountsRes.data);
   };
 
   useEffect(() => {
@@ -50,7 +54,7 @@ const Reports = () => {
       // Fetch expenses
       let expensesQuery = supabase
         .from("expenses")
-        .select("*, sites(site_name), vendors(name), categories(category_name)");
+        .select("*, sites(site_name), vendors(name), categories(category_name), bank_accounts(account_name)");
 
       if (filters.start_date) {
         expensesQuery = expensesQuery.gte("date", filters.start_date);
@@ -70,11 +74,14 @@ const Reports = () => {
       if (filters.payment_status && filters.payment_status !== "all") {
         expensesQuery = expensesQuery.eq("payment_status", filters.payment_status as "paid" | "partial" | "unpaid");
       }
+      if (filters.bank_account_id && filters.bank_account_id !== "all") {
+        expensesQuery = expensesQuery.eq("bank_account_id", filters.bank_account_id);
+      }
 
       // Fetch credits (filtered by date and site if applicable)
       let creditsQuery = supabase
         .from("credits")
-        .select("*, sites(site_name)");
+        .select("*, sites(site_name), bank_accounts(account_name)");
 
       if (filters.start_date) {
         creditsQuery = creditsQuery.gte("date", filters.start_date);
@@ -84,6 +91,9 @@ const Reports = () => {
       }
       if (filters.site_id && filters.site_id !== "all") {
         creditsQuery = creditsQuery.eq("site_id", filters.site_id);
+      }
+      if (filters.bank_account_id && filters.bank_account_id !== "all") {
+        creditsQuery = creditsQuery.eq("bank_account_id", filters.bank_account_id);
       }
 
       const [expensesResult, creditsResult] = await Promise.all([
@@ -122,7 +132,7 @@ const Reports = () => {
       return;
     }
 
-    const headers = ["Date", "Type", "Site/Category", "Vendor", "Category", "Description", "Amount", "Status"];
+    const headers = ["Date", "Type", "Site/Category", "Vendor", "Category", "Bank Account", "Description", "Amount", "Status"];
     const csvContent = [
       headers.join(","),
       ...reportData.map((row) =>
@@ -132,6 +142,7 @@ const Reports = () => {
           row.type === "expense" ? row.sites?.site_name || "-" : row.category || "-",
           row.type === "expense" ? row.vendors?.name || "-" : "-",
           row.type === "expense" ? row.categories?.category_name || "-" : "-",
+          row.bank_accounts?.account_name || "-",
           `"${row.description || ""}"`,
           row.type === "credit" ? row.amount : -row.amount,
           row.payment_status || "-",
@@ -262,6 +273,22 @@ const Reports = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="bank_account_id">Bank Account</Label>
+                <Select value={filters.bank_account_id} onValueChange={(value) => setFilters({ ...filters, bank_account_id: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All accounts" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    {bankAccounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.account_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <Button type="submit" disabled={loading} className="w-full sm:w-auto">
@@ -316,6 +343,7 @@ const Reports = () => {
                     <TableHead className="text-xs sm:text-sm">Site/Category</TableHead>
                     <TableHead className="text-xs sm:text-sm">Vendor</TableHead>
                     <TableHead className="text-xs sm:text-sm">Category</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Bank Account</TableHead>
                     <TableHead className="text-xs sm:text-sm">Description</TableHead>
                     <TableHead className="text-xs sm:text-sm">Amount</TableHead>
                     <TableHead className="text-xs sm:text-sm">Status</TableHead>
@@ -335,6 +363,7 @@ const Reports = () => {
                     </TableCell>
                     <TableCell className="text-xs sm:text-sm">{row.type === "expense" ? row.vendors?.name || "-" : "-"}</TableCell>
                     <TableCell className="text-xs sm:text-sm">{row.type === "expense" ? row.categories?.category_name || "-" : "-"}</TableCell>
+                    <TableCell className="text-xs sm:text-sm">{row.bank_accounts?.account_name || "-"}</TableCell>
                     <TableCell className="max-w-xs truncate text-xs sm:text-sm">{row.description || "-"}</TableCell>
                     <TableCell className={`text-xs sm:text-sm whitespace-nowrap font-semibold ${row.type === "credit" ? "text-green-600" : "text-destructive"}`}>
                       {row.type === "credit" ? "+" : "-"}₹{Number(row.amount).toLocaleString('en-IN')}
