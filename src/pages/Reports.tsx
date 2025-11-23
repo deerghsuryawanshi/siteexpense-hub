@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { FileDown, Search } from "lucide-react";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 const Reports = () => {
   const { toast } = useToast();
@@ -27,6 +28,8 @@ const Reports = () => {
     payment_status: "all",
     bank_account_id: "all",
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   const fetchFilterOptions = async () => {
     const [sitesRes, vendorsRes, categoriesRes, bankAccountsRes] = await Promise.all([
@@ -49,6 +52,7 @@ const Reports = () => {
   const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
+    setCurrentPage(1); // Reset to first page on new search
 
     try {
       // Fetch expenses
@@ -178,6 +182,17 @@ const Reports = () => {
     .reduce((sum, row) => sum + Number(row.amount), 0);
   
   const netAmount = totalCredits - totalExpenses;
+
+  // Pagination calculations
+  const totalPages = Math.ceil(reportData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = reportData.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div className="space-y-6">
@@ -314,8 +329,27 @@ const Reports = () => {
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <CardTitle>Report Results</CardTitle>
-                <div className="grid grid-cols-3 gap-4 text-right w-full sm:w-auto">
+              <div className="flex items-center gap-4">
+                <CardTitle>Report Results</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="itemsPerPage" className="text-sm whitespace-nowrap">Rows per page:</Label>
+                  <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1);
+                  }}>
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-right w-full sm:w-auto">
                 <div>
                   <p className="text-xs text-muted-foreground">Total Expenses</p>
                   <p className="text-lg font-bold text-destructive">₹{totalExpenses.toLocaleString('en-IN')}</p>
@@ -350,7 +384,7 @@ const Reports = () => {
                   </TableRow>
                 </TableHeader>
               <TableBody>
-                {reportData.map((row) => (
+                {paginatedData.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell className="text-xs sm:text-sm whitespace-nowrap">{new Date(row.date).toLocaleDateString()}</TableCell>
                     <TableCell>
@@ -388,6 +422,59 @@ const Reports = () => {
                 ))}
               </TableBody>
             </Table>
+            </div>
+          </CardContent>
+          <CardContent className="pt-0">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {startIndex + 1} to {Math.min(endIndex, reportData.length)} of {reportData.length} entries
+              </div>
+              {totalPages > 1 && (
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() => currentPage > 1 && handlePageChange(currentPage - 1)}
+                        className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                    {[...Array(totalPages)].map((_, index) => {
+                      const pageNumber = index + 1;
+                      // Show first page, last page, current page, and pages around current
+                      if (
+                        pageNumber === 1 ||
+                        pageNumber === totalPages ||
+                        (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)
+                      ) {
+                        return (
+                          <PaginationItem key={pageNumber}>
+                            <PaginationLink
+                              onClick={() => handlePageChange(pageNumber)}
+                              isActive={currentPage === pageNumber}
+                              className="cursor-pointer"
+                            >
+                              {pageNumber}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      } else if (pageNumber === currentPage - 2 || pageNumber === currentPage + 2) {
+                        return (
+                          <PaginationItem key={pageNumber}>
+                            <span className="px-4">...</span>
+                          </PaginationItem>
+                        );
+                      }
+                      return null;
+                    })}
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() => currentPage < totalPages && handlePageChange(currentPage + 1)}
+                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              )}
             </div>
           </CardContent>
         </Card>
