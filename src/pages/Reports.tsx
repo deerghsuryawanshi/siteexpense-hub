@@ -100,18 +100,40 @@ const Reports = () => {
         creditsQuery = creditsQuery.eq("bank_account_id", filters.bank_account_id);
       }
 
-      const [expensesResult, creditsResult] = await Promise.all([
+      // Fetch fund transfers
+      let transfersQuery = supabase
+        .from("fund_transfers")
+        .select("*, from_account:bank_accounts!fund_transfers_from_account_id_fkey(id, account_name), to_account:bank_accounts!fund_transfers_to_account_id_fkey(id, account_name)");
+
+      if (filters.start_date) {
+        transfersQuery = transfersQuery.gte("date", filters.start_date);
+      }
+      if (filters.end_date) {
+        transfersQuery = transfersQuery.lte("date", filters.end_date);
+      }
+      if (filters.bank_account_id && filters.bank_account_id !== "all") {
+        transfersQuery = transfersQuery.or(`from_account_id.eq.${filters.bank_account_id},to_account_id.eq.${filters.bank_account_id}`);
+      }
+
+      const [expensesResult, creditsResult, transfersResult] = await Promise.all([
         expensesQuery.order("date", { ascending: false }),
         creditsQuery.order("date", { ascending: false }),
+        transfersQuery.order("date", { ascending: false }),
       ]);
 
       if (expensesResult.error) throw expensesResult.error;
       if (creditsResult.error) throw creditsResult.error;
+      if (transfersResult.error) throw transfersResult.error;
 
-      // Combine expenses and credits with type indicator
+      // Combine expenses, credits and fund transfers with type indicator
       const combinedData = [
         ...(expensesResult.data || []).map((item: any) => ({ ...item, type: "expense" })),
         ...(creditsResult.data || []).map((item: any) => ({ ...item, type: "credit" })),
+        ...(transfersResult.data || []).map((item: any) => ({ 
+          ...item, 
+          type: "transfer",
+          bank_accounts: { account_name: `${item.from_account?.account_name} → ${item.to_account?.account_name}` }
+        })),
       ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       setReportData(combinedData);
@@ -143,12 +165,12 @@ const Reports = () => {
         [
           row.date,
           row.type,
-          row.type === "expense" ? row.sites?.site_name || "-" : row.category || "-",
+          row.type === "expense" ? row.sites?.site_name || "-" : row.type === "transfer" ? "Fund Transfer" : row.category || "-",
           row.type === "expense" ? row.vendors?.name || "-" : "-",
           row.type === "expense" ? row.categories?.category_name || "-" : "-",
           row.bank_accounts?.account_name || "-",
           `"${row.description || ""}"`,
-          row.type === "credit" ? row.amount : -row.amount,
+          row.type === "credit" ? row.amount : row.type === "transfer" ? row.amount : -row.amount,
           row.payment_status || "-",
         ].join(",")
       ),
@@ -156,6 +178,7 @@ const Reports = () => {
       "",
       `"Total Expenses",,,,,,${-totalExpenses},`,
       `"Total Credits",,,,,,${totalCredits},`,
+      `"Total Transfers",,,,,,${totalTransfers},`,
       `"Net Amount",,,,,,${netAmount},`,
     ].join("\n");
 
@@ -179,6 +202,10 @@ const Reports = () => {
   
   const totalCredits = reportData
     .filter((row) => row.type === "credit")
+    .reduce((sum, row) => sum + Number(row.amount), 0);
+
+  const totalTransfers = reportData
+    .filter((row) => row.type === "transfer")
     .reduce((sum, row) => sum + Number(row.amount), 0);
   
   const netAmount = totalCredits - totalExpenses;
@@ -349,7 +376,7 @@ const Reports = () => {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4 text-right w-full sm:w-auto">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-right w-full sm:w-auto">
                 <div>
                   <p className="text-xs text-muted-foreground">Total Expenses</p>
                   <p className="text-lg font-bold text-destructive">₹{totalExpenses.toLocaleString('en-IN')}</p>
@@ -357,6 +384,10 @@ const Reports = () => {
                 <div>
                   <p className="text-xs text-muted-foreground">Total Credits</p>
                   <p className="text-lg font-bold text-green-600">₹{totalCredits.toLocaleString('en-IN')}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Transfers</p>
+                  <p className="text-lg font-bold text-blue-600">₹{totalTransfers.toLocaleString('en-IN')}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Net Amount</p>
@@ -388,19 +419,22 @@ const Reports = () => {
                   <TableRow key={row.id}>
                     <TableCell className="text-xs sm:text-sm whitespace-nowrap">{new Date(row.date).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <Badge variant={row.type === "credit" ? "default" : "destructive"} className="capitalize text-xs">
+                      <Badge 
+                        variant={row.type === "credit" ? "default" : row.type === "transfer" ? "secondary" : "destructive"} 
+                        className="capitalize text-xs"
+                      >
                         {row.type}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs sm:text-sm">
-                      {row.type === "expense" ? row.sites?.site_name || "-" : row.sites?.site_name || row.category || "-"}
+                      {row.type === "expense" ? row.sites?.site_name || "-" : row.type === "transfer" ? "Fund Transfer" : row.sites?.site_name || row.category || "-"}
                     </TableCell>
                     <TableCell className="text-xs sm:text-sm">{row.type === "expense" ? row.vendors?.name || "-" : "-"}</TableCell>
                     <TableCell className="text-xs sm:text-sm">{row.type === "expense" ? row.categories?.category_name || "-" : "-"}</TableCell>
                     <TableCell className="text-xs sm:text-sm">{row.bank_accounts?.account_name || "-"}</TableCell>
                     <TableCell className="max-w-xs truncate text-xs sm:text-sm">{row.description || "-"}</TableCell>
-                    <TableCell className={`text-xs sm:text-sm whitespace-nowrap font-semibold ${row.type === "credit" ? "text-green-600" : "text-destructive"}`}>
-                      {row.type === "credit" ? "+" : "-"}₹{Number(row.amount).toLocaleString('en-IN')}
+                    <TableCell className={`text-xs sm:text-sm whitespace-nowrap font-semibold ${row.type === "credit" ? "text-green-600" : row.type === "transfer" ? "text-blue-600" : "text-destructive"}`}>
+                      {row.type === "credit" ? "+" : row.type === "transfer" ? "↔" : "-"}₹{Number(row.amount).toLocaleString('en-IN')}
                     </TableCell>
                     <TableCell>
                       {row.payment_status && (
