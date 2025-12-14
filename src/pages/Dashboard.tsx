@@ -16,6 +16,8 @@ interface AccountSummary {
   account_name: string;
   expense: number;
   credit: number;
+  transferIn: number;
+  transferOut: number;
 }
 
 const Dashboard = () => {
@@ -46,6 +48,10 @@ const Dashboard = () => {
         .from("bank_accounts")
         .select("id, account_name");
 
+      const { data: fundTransfers } = await supabase
+        .from("fund_transfers")
+        .select("from_account_id, to_account_id, amount");
+
       // Process site-wise summary
       const siteSummaryData: SiteSummary[] = [];
       allSites?.forEach((site) => {
@@ -68,7 +74,7 @@ const Dashboard = () => {
       // Process account-wise summary
       const accountSummaryData: AccountSummary[] = [];
 
-      // Cash summary
+      // Cash summary (no fund transfers for cash)
       const cashExpenses = allExpenses
         ?.filter((exp) => exp.payment_method === 'cash')
         .reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
@@ -81,6 +87,8 @@ const Dashboard = () => {
         account_name: 'Cash',
         expense: cashExpenses,
         credit: cashCredits,
+        transferIn: 0,
+        transferOut: 0,
       });
 
       // Bank account summaries
@@ -93,10 +101,21 @@ const Dashboard = () => {
           ?.filter((credit) => credit.payment_method === 'bank_transfer' && credit.bank_account_id === account.id)
           .reduce((sum, credit) => sum + Number(credit.amount), 0) || 0;
 
+        // Calculate fund transfers for this account
+        const transferIn = fundTransfers
+          ?.filter((t) => t.to_account_id === account.id)
+          .reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+
+        const transferOut = fundTransfers
+          ?.filter((t) => t.from_account_id === account.id)
+          .reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+
         accountSummaryData.push({
           account_name: account.account_name,
           expense: bankExpenses,
           credit: bankCredits,
+          transferIn,
+          transferOut,
         });
       });
 
@@ -119,7 +138,9 @@ const Dashboard = () => {
 
   // Calculate totals for overview
   const totalSiteBalance = siteSummary.reduce((sum, site) => sum + site.balance, 0);
-  const totalAccountBalance = accountSummary.reduce((sum, acc) => sum + (acc.credit - acc.expense), 0);
+  const totalAccountBalance = accountSummary.reduce((sum, acc) => 
+    sum + (acc.credit + acc.transferIn - acc.expense - acc.transferOut), 0
+  );
   const totalRevenue = siteSummary.reduce((sum, site) => sum + site.received, 0);
   const totalExpenses = siteSummary.reduce((sum, site) => sum + site.expense, 0);
 
@@ -285,7 +306,7 @@ const Dashboard = () => {
                   </TableHeader>
                   <TableBody>
                     {accountSummary.map((account, index) => {
-                      const balance = account.credit - account.expense;
+                      const balance = account.credit + account.transferIn - account.expense - account.transferOut;
                       const isCash = account.account_name === 'Cash';
                       
                       return (
