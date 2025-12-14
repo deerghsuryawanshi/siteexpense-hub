@@ -52,6 +52,7 @@ const Expenses = () => {
   const [filterVendor, setFilterVendor] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterBankAccount, setFilterBankAccount] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
@@ -62,7 +63,7 @@ const Expenses = () => {
 
   useEffect(() => {
     fetchData();
-  }, [currentPage, filterSite, filterVendor, filterCategory, filterStatus, dateFrom, dateTo, searchQuery]);
+  }, [currentPage, filterSite, filterVendor, filterCategory, filterStatus, filterBankAccount, dateFrom, dateTo, searchQuery]);
 
   const getCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -88,6 +89,13 @@ const Expenses = () => {
       }
       if (filterStatus !== "all") {
         query = query.eq("payment_status", filterStatus as "paid" | "unpaid" | "partial");
+      }
+      if (filterBankAccount !== "all") {
+        if (filterBankAccount === "cash") {
+          query = query.eq("payment_method", "cash");
+        } else {
+          query = query.eq("bank_account_id", filterBankAccount);
+        }
       }
       if (dateFrom) {
         query = query.gte("date", dateFrom);
@@ -142,6 +150,7 @@ const Expenses = () => {
     setFilterVendor("all");
     setFilterCategory("all");
     setFilterStatus("all");
+    setFilterBankAccount("all");
     setDateFrom("");
     setDateTo("");
     setCurrentPage(1);
@@ -638,6 +647,24 @@ const Expenses = () => {
                       <SelectItem value="paid">Paid</SelectItem>
                       <SelectItem value="unpaid">Unpaid</SelectItem>
                       <SelectItem value="partial">Partial</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Bank Account</Label>
+                  <Select value={filterBankAccount} onValueChange={setFilterBankAccount}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All accounts" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Accounts</SelectItem>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      {bankAccounts.map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.account_name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
