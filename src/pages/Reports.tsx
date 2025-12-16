@@ -126,14 +126,30 @@ const Reports = () => {
       if (transfersResult.error) throw transfersResult.error;
 
       // Combine expenses, credits and fund transfers with type indicator
+      // For transfers, determine direction based on filtered bank account
+      const transfersWithDirection = (transfersResult.data || []).map((item: any) => {
+        let transfer_direction: 'in' | 'out' | 'neutral' = 'neutral';
+        
+        if (filters.bank_account_id && filters.bank_account_id !== "all") {
+          if (item.to_account_id === filters.bank_account_id) {
+            transfer_direction = 'in'; // Money coming into filtered account (credit)
+          } else if (item.from_account_id === filters.bank_account_id) {
+            transfer_direction = 'out'; // Money going out of filtered account (debit)
+          }
+        }
+        
+        return { 
+          ...item, 
+          type: "transfer",
+          transfer_direction,
+          bank_accounts: { account_name: `${item.from_account?.account_name} → ${item.to_account?.account_name}` }
+        };
+      });
+
       const combinedData = [
         ...(expensesResult.data || []).map((item: any) => ({ ...item, type: "expense" })),
         ...(creditsResult.data || []).map((item: any) => ({ ...item, type: "credit" })),
-        ...(transfersResult.data || []).map((item: any) => ({ 
-          ...item, 
-          type: "transfer",
-          bank_accounts: { account_name: `${item.from_account?.account_name} → ${item.to_account?.account_name}` }
-        })),
+        ...transfersWithDirection,
       ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       setReportData(combinedData);
@@ -159,27 +175,48 @@ const Reports = () => {
     }
 
     const headers = ["Date", "Type", "Site/Category", "Vendor", "Category", "Bank Account", "Description", "Amount", "Status"];
+    
+    // Build summary rows based on whether bank account is filtered
+    const summaryRows = filters.bank_account_id !== "all" 
+      ? [
+          `"Total Expenses (incl. Transfers Out)",,,,,,${-(totalExpenses + transfersOut)},`,
+          `"Total Credits (incl. Transfers In)",,,,,,${totalCredits + transfersIn},`,
+          `"Transfers In",,,,,,${transfersIn},`,
+          `"Transfers Out",,,,,,${-transfersOut},`,
+          `"Net Amount",,,,,,${netAmount},`,
+        ]
+      : [
+          `"Total Expenses",,,,,,${-totalExpenses},`,
+          `"Total Credits",,,,,,${totalCredits},`,
+          `"Total Transfers",,,,,,${totalTransfers},`,
+          `"Net Amount",,,,,,${netAmount},`,
+        ];
+
     const csvContent = [
       headers.join(","),
-      ...reportData.map((row) =>
-        [
+      ...reportData.map((row) => {
+        let amount = row.amount;
+        if (row.type === "expense") {
+          amount = -row.amount;
+        } else if (row.type === "transfer") {
+          // Show as negative if transfer out, positive if transfer in
+          amount = row.transfer_direction === "out" ? -row.amount : row.amount;
+        }
+        return [
           row.date,
-          row.type,
+          row.type === "transfer" ? (row.transfer_direction === "in" ? "transfer-in" : row.transfer_direction === "out" ? "transfer-out" : "transfer") : row.type,
           row.type === "expense" ? row.sites?.site_name || "-" : row.type === "transfer" ? "Fund Transfer" : row.category || "-",
           row.type === "expense" ? row.vendors?.name || "-" : "-",
           row.type === "expense" ? row.categories?.category_name || "-" : "-",
           row.bank_accounts?.account_name || "-",
           `"${row.description || ""}"`,
-          row.type === "credit" ? row.amount : row.type === "transfer" ? row.amount : -row.amount,
+          amount,
           row.payment_status || "-",
-        ].join(",")
-      ),
+        ].join(",");
+      }),
       "",
       "",
-      `"Total Expenses",,,,,,${-totalExpenses},`,
-      `"Total Credits",,,,,,${totalCredits},`,
-      `"Total Transfers",,,,,,${totalTransfers},`,
-      `"Net Amount",,,,,,${netAmount},`,
+      ...summaryRows,
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });
@@ -204,11 +241,21 @@ const Reports = () => {
     .filter((row) => row.type === "credit")
     .reduce((sum, row) => sum + Number(row.amount), 0);
 
+  // Calculate transfers based on direction when bank account is filtered
+  const transfersIn = reportData
+    .filter((row) => row.type === "transfer" && row.transfer_direction === "in")
+    .reduce((sum, row) => sum + Number(row.amount), 0);
+
+  const transfersOut = reportData
+    .filter((row) => row.type === "transfer" && row.transfer_direction === "out")
+    .reduce((sum, row) => sum + Number(row.amount), 0);
+
   const totalTransfers = reportData
     .filter((row) => row.type === "transfer")
     .reduce((sum, row) => sum + Number(row.amount), 0);
   
-  const netAmount = totalCredits - totalExpenses;
+  // Net amount includes: Credits + TransfersIn - Expenses - TransfersOut
+  const netAmount = (totalCredits + transfersIn) - (totalExpenses + transfersOut);
 
   // Pagination calculations
   const totalPages = Math.ceil(reportData.length / itemsPerPage);
@@ -376,19 +423,33 @@ const Reports = () => {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-right w-full sm:w-auto">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-right w-full sm:w-auto">
                 <div>
                   <p className="text-xs text-muted-foreground">Total Expenses</p>
-                  <p className="text-lg font-bold text-destructive">₹{totalExpenses.toLocaleString('en-IN')}</p>
+                  <p className="text-lg font-bold text-destructive">₹{(totalExpenses + transfersOut).toLocaleString('en-IN')}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Total Credits</p>
-                  <p className="text-lg font-bold text-green-600">₹{totalCredits.toLocaleString('en-IN')}</p>
+                  <p className="text-lg font-bold text-green-600">₹{(totalCredits + transfersIn).toLocaleString('en-IN')}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Total Transfers</p>
-                  <p className="text-lg font-bold text-blue-600">₹{totalTransfers.toLocaleString('en-IN')}</p>
-                </div>
+                {filters.bank_account_id !== "all" && (
+                  <>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Transfers In</p>
+                      <p className="text-lg font-bold text-green-600">₹{transfersIn.toLocaleString('en-IN')}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Transfers Out</p>
+                      <p className="text-lg font-bold text-destructive">₹{transfersOut.toLocaleString('en-IN')}</p>
+                    </div>
+                  </>
+                )}
+                {filters.bank_account_id === "all" && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total Transfers</p>
+                    <p className="text-lg font-bold text-blue-600">₹{totalTransfers.toLocaleString('en-IN')}</p>
+                  </div>
+                )}
                 <div>
                   <p className="text-xs text-muted-foreground">Net Amount</p>
                   <p className={`text-lg font-bold ${netAmount >= 0 ? 'text-green-600' : 'text-destructive'}`}>
@@ -420,10 +481,16 @@ const Reports = () => {
                     <TableCell className="text-xs sm:text-sm whitespace-nowrap">{new Date(row.date).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <Badge 
-                        variant={row.type === "credit" ? "default" : row.type === "transfer" ? "secondary" : "destructive"} 
+                        variant={
+                          row.type === "credit" ? "default" : 
+                          row.type === "transfer" ? (row.transfer_direction === "in" ? "default" : row.transfer_direction === "out" ? "destructive" : "secondary") : 
+                          "destructive"
+                        } 
                         className="capitalize text-xs"
                       >
-                        {row.type}
+                        {row.type === "transfer" && row.transfer_direction !== "neutral" 
+                          ? `transfer-${row.transfer_direction}` 
+                          : row.type}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs sm:text-sm">
@@ -433,8 +500,14 @@ const Reports = () => {
                     <TableCell className="text-xs sm:text-sm">{row.type === "expense" ? row.categories?.category_name || "-" : "-"}</TableCell>
                     <TableCell className="text-xs sm:text-sm">{row.bank_accounts?.account_name || "-"}</TableCell>
                     <TableCell className="max-w-xs truncate text-xs sm:text-sm">{row.description || "-"}</TableCell>
-                    <TableCell className={`text-xs sm:text-sm whitespace-nowrap font-semibold ${row.type === "credit" ? "text-green-600" : row.type === "transfer" ? "text-blue-600" : "text-destructive"}`}>
-                      {row.type === "credit" ? "+" : row.type === "transfer" ? "↔" : "-"}₹{Number(row.amount).toLocaleString('en-IN')}
+                    <TableCell className={`text-xs sm:text-sm whitespace-nowrap font-semibold ${
+                      row.type === "credit" ? "text-green-600" : 
+                      row.type === "transfer" ? (row.transfer_direction === "in" ? "text-green-600" : row.transfer_direction === "out" ? "text-destructive" : "text-blue-600") : 
+                      "text-destructive"
+                    }`}>
+                      {row.type === "credit" ? "+" : 
+                       row.type === "transfer" ? (row.transfer_direction === "in" ? "+" : row.transfer_direction === "out" ? "-" : "↔") : 
+                       "-"}₹{Number(row.amount).toLocaleString('en-IN')}
                     </TableCell>
                     <TableCell>
                       {row.payment_status && (
