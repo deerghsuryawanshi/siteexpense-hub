@@ -164,7 +164,7 @@ const Reports = () => {
     }
   };
 
-  const exportToCSV = () => {
+  const exportToExcel = async () => {
     if (reportData.length === 0) {
       toast({
         variant: "destructive",
@@ -174,56 +174,134 @@ const Reports = () => {
       return;
     }
 
-    const headers = ["Date", "Type", "Site/Category", "Vendor", "Category", "Bank Account", "Description", "Amount", "Status"];
-    
-    // Build summary rows based on whether bank account is filtered
-    const summaryRows = filters.bank_account_id !== "all" 
-      ? [
-          `"Total Expenses (incl. Transfers Out)",,,,,,${-(totalExpenses + transfersOut)},`,
-          `"Total Credits (incl. Transfers In)",,,,,,${totalCredits + transfersIn},`,
-          `"Transfers In",,,,,,${transfersIn},`,
-          `"Transfers Out",,,,,,${-transfersOut},`,
-          `"Net Amount",,,,,,${netAmount},`,
-        ]
-      : [
-          `"Total Expenses",,,,,,${-totalExpenses},`,
-          `"Total Credits",,,,,,${totalCredits},`,
-          `"Total Transfers",,,,,,${totalTransfers},`,
-          `"Net Amount",,,,,,${netAmount},`,
-        ];
+    const ExcelJS = await import('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Financial Report');
 
-    const csvContent = [
-      headers.join(","),
-      ...reportData.map((row) => {
-        let amount = row.amount;
-        if (row.type === "expense") {
-          amount = -row.amount;
-        } else if (row.type === "transfer") {
-          // Show as negative if transfer out, positive if transfer in
-          amount = row.transfer_direction === "out" ? -row.amount : row.amount;
-        }
-        return [
-          row.date,
-          row.type === "transfer" ? (row.transfer_direction === "in" ? "transfer-in" : row.transfer_direction === "out" ? "transfer-out" : "transfer") : row.type,
-          row.type === "expense" ? row.sites?.site_name || "-" : row.type === "transfer" ? "Fund Transfer" : row.category || "-",
-          row.type === "expense" ? row.vendors?.name || "-" : "-",
-          row.type === "expense" ? row.categories?.category_name || "-" : "-",
-          row.bank_accounts?.account_name || "-",
-          `"${row.description || ""}"`,
-          amount,
-          row.payment_status || "-",
-        ].join(",");
-      }),
-      "",
-      "",
-      ...summaryRows,
-    ].join("\n");
+    // Define columns with width
+    worksheet.columns = [
+      { header: 'Date', key: 'date', width: 12 },
+      { header: 'Type', key: 'type', width: 12 },
+      { header: 'Site/Category', key: 'site', width: 20 },
+      { header: 'Vendor', key: 'vendor', width: 18 },
+      { header: 'Category', key: 'category', width: 18 },
+      { header: 'Bank Account', key: 'bank', width: 25 },
+      { header: 'Description', key: 'description', width: 30 },
+      { header: 'Amount', key: 'amount', width: 15 },
+      { header: 'Status', key: 'status', width: 10 },
+    ];
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
+    // Style header row
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1E40AF' }, // Blue background
+    };
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    headerRow.height = 25;
+
+    // Add data rows
+    reportData.forEach((row) => {
+      let amount = row.amount;
+      if (row.type === "expense") {
+        amount = -row.amount;
+      } else if (row.type === "transfer") {
+        amount = row.transfer_direction === "out" ? -row.amount : row.amount;
+      }
+
+      const dataRow = worksheet.addRow({
+        date: row.date,
+        type: row.type === "transfer" 
+          ? (row.transfer_direction === "in" ? "Transfer In" : row.transfer_direction === "out" ? "Transfer Out" : "Transfer") 
+          : row.type.charAt(0).toUpperCase() + row.type.slice(1),
+        site: row.type === "expense" ? row.sites?.site_name || "-" : row.type === "transfer" ? "Fund Transfer" : row.category || "-",
+        vendor: row.type === "expense" ? row.vendors?.name || "-" : "-",
+        category: row.type === "expense" ? row.categories?.category_name || "-" : "-",
+        bank: row.bank_accounts?.account_name || "-",
+        description: row.description || "",
+        amount: amount,
+        status: row.payment_status || "-",
+      });
+
+      // Color code based on type
+      if (row.type === "expense" || row.transfer_direction === "out") {
+        dataRow.getCell('amount').font = { color: { argb: 'FFDC2626' } }; // Red for expenses
+      } else if (row.type === "credit" || row.transfer_direction === "in") {
+        dataRow.getCell('amount').font = { color: { argb: 'FF16A34A' } }; // Green for credits
+      }
+    });
+
+    // Add empty rows before summary
+    worksheet.addRow([]);
+    worksheet.addRow([]);
+
+    // Summary section header
+    const summaryHeaderRow = worksheet.addRow(['SUMMARY']);
+    summaryHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    summaryHeaderRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF374151' }, // Gray background
+    };
+    worksheet.mergeCells(`A${summaryHeaderRow.number}:I${summaryHeaderRow.number}`);
+    summaryHeaderRow.alignment = { horizontal: 'center' };
+
+    // Summary data with formatting
+    const addSummaryRow = (label: string, value: number, isTotal: boolean = false) => {
+      const row = worksheet.addRow([label, '', '', '', '', '', '', value, '']);
+      row.font = { bold: isTotal };
+      row.getCell(8).numFmt = '₹#,##0.00';
+      if (value < 0) {
+        row.getCell(8).font = { bold: isTotal, color: { argb: 'FFDC2626' } };
+      } else if (value > 0) {
+        row.getCell(8).font = { bold: isTotal, color: { argb: 'FF16A34A' } };
+      }
+      if (isTotal) {
+        row.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF3F4F6' }, // Light gray
+        };
+      }
+    };
+
+    if (filters.bank_account_id !== "all") {
+      addSummaryRow('Total Expenses (incl. Transfers Out)', -(totalExpenses + transfersOut));
+      addSummaryRow('Total Credits (incl. Transfers In)', totalCredits + transfersIn);
+      addSummaryRow('Transfers In', transfersIn);
+      addSummaryRow('Transfers Out', -transfersOut);
+      addSummaryRow('Net Amount', netAmount, true);
+    } else {
+      addSummaryRow('Total Expenses', -totalExpenses);
+      addSummaryRow('Total Credits', totalCredits);
+      addSummaryRow('Total Transfers', totalTransfers);
+      addSummaryRow('Net Amount', netAmount, true);
+    }
+
+    // Add borders to all data cells
+    worksheet.eachRow((row, rowNumber) => {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+          left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+          bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+          right: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        };
+      });
+    });
+
+    // Format amount column as Indian currency
+    worksheet.getColumn('amount').numFmt = '₹#,##0.00';
+
+    // Generate and download file
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = `financial-report-${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `financial-report-${new Date().toISOString().split('T')[0]}.xlsx`;
     a.click();
     window.URL.revokeObjectURL(url);
 
@@ -387,12 +465,12 @@ const Reports = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={exportToCSV}
+                onClick={exportToExcel}
                 disabled={reportData.length === 0}
                 className="w-full sm:w-auto"
               >
                 <FileDown className="w-4 h-4 mr-2" />
-                Export CSV
+                Export Excel
               </Button>
             </div>
           </form>
