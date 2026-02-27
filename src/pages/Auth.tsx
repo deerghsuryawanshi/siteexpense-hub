@@ -30,10 +30,13 @@ const Auth = () => {
     setLoading(false);
 
     if (error) {
+      console.error("Auth error details:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message,
+        description: error.message === "Failed to fetch" 
+          ? "Network error. Please open this app in a new browser tab to sign in." 
+          : error.message,
       });
     } else {
       navigate("/dashboard");
