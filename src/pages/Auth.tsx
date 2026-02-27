@@ -22,24 +22,54 @@ const Auth = () => {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    setLoading(false);
+      if (error) {
+        if (error.message === "Failed to fetch") {
+          // Fallback: use edge function proxy when direct auth fails
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-login`,
+            {
+              method: "POST",
+              headers: { 
+                "Content-Type": "application/json",
+                "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              },
+              body: JSON.stringify({ email, password }),
+            }
+          );
 
-    if (error) {
-      console.error("Auth error details:", error);
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "Login failed");
+          }
+
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: data.access_token,
+            refresh_token: data.refresh_token,
+          });
+
+          if (sessionError) throw sessionError;
+        } else {
+          throw error;
+        }
+      }
+
+      setLoading(false);
+      navigate("/dashboard");
+    } catch (err: any) {
+      setLoading(false);
+      console.error("Auth error:", err);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message === "Failed to fetch" 
-          ? "Network error. Please open this app in a new browser tab to sign in." 
-          : error.message,
+        description: err.message || "Failed to sign in",
       });
-    } else {
-      navigate("/dashboard");
     }
   };
 
