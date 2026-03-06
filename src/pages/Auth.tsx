@@ -23,6 +23,9 @@ const Auth = () => {
     const password = formData.get("password") as string;
 
     try {
+      // Clear any stale session to stop refresh_token retry loops
+      await supabase.auth.signOut().catch(() => {});
+      
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
