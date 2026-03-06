@@ -14,8 +14,18 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(url, serviceKey);
 
-  const { data, error } = await supabase.auth.admin.createUser({
-    email: "admin@sitetracker.com",
+  // List users to find admin
+  const { data: listData } = await supabase.auth.admin.listUsers();
+  const adminUser = listData?.users?.find(u => u.email === "admin@sitetracker.com");
+  
+  if (!adminUser) {
+    return new Response(JSON.stringify({ error: "User not found" }), {
+      status: 404,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  const { data, error } = await supabase.auth.admin.updateUserById(adminUser.id, {
     password: "Admin@123456",
     email_confirm: true,
   });
@@ -27,7 +37,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  return new Response(JSON.stringify({ user: data.user }), {
+  return new Response(JSON.stringify({ success: true, user_id: data.user.id }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   });
 });
